@@ -2,14 +2,18 @@
 
 A javascript asset pipeline for Node and Express. Uses Rails-like syntax for requiring and concatenating javascript files. Minifies using UglifyJS in production environments.
 
+TODO:
+* Client-side debugging
+* Recursive requires (required files also checked)
+
 ## Documentation
 
-### route(app, options)
+### gcp(options)
 
 __Options that can be specified:__
 
-* `source` (*required*) : the directory of the actual javascript files to be compiled.
-* `dest` (*required*) : the directory you want the compiled javascript to be stored & requested from.
+* `source` ( *required* ) : the directory of the actual javascript files to be compiled.
+* `dest` ( *required* ) : the directory you want the compiled javascript to be stored & requested from.
 * `force` (default `false`) : set to true to force compilation whenever javascript is reloaded. Normally it only compiles when a file has changed.
 * `minify` (default `false`) : set to true to minify all javascript. If not present, GCP minifies in __production__ and concatenates in __development__.
 * `templateName` (default `jst`) : the name of the global client-side object that stores all javascript templates.
