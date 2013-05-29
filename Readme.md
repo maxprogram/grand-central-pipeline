@@ -81,7 +81,7 @@ Template in *client/templates/list.hbs*, assuming the template (or folder) is re
 
 ### Client-side Debugging
 
-The GCP client-side library handles errors to return the correct file names and line numbers for debugging.
+[WORK IN PROGRESS] The GCP client-side library handles errors to return the correct file names and line numbers for debugging.
 
 ### Miscellaneous
 
