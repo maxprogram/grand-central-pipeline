@@ -3,8 +3,13 @@
 A javascript asset pipeline for Node and Express. Uses Rails-like syntax for requiring and concatenating javascript files. Minifies using UglifyJS in production environments.
 
 TODO:
+
 * Client-side debugging
+* More intelligent in-file requiring
+    * https://github.com/TrevorBurnham/snockets
+    * https://github.com/sstephenson/sprockets
 * Recursive requires (required files also checked)
+* Examples folder with simple Express app
 
 ## Documentation
 
@@ -17,6 +22,17 @@ __Options that can be specified:__
 * `force` (default `false`) : set to true to force compilation whenever javascript is reloaded. Normally it only compiles when a file has changed.
 * `minify` (default `false`) : set to true to minify all javascript. If not present, GCP minifies in __production__ and concatenates in __development__.
 * `templateName` (default `jst`) : the name of the global client-side object that stores all javascript templates.
+
+All options and defaults:
+```js
+require('grand-central-pipeline')({
+    source: '',   // required
+    dest: '',     // required
+    force: false,
+    minify: false,
+    templateName: 'jst'
+});
+```
 
 Example code in your `app.js` file or wherever you initialize your Express app:
 ```js
@@ -41,15 +57,25 @@ Other javascipt files can be required using `//= require` or `//= require_tree`,
 
 In the __development__ environment, required JS files are concatenated and labeled as is. In __production__, they are minified using UglifyJS.
 
+### Directives
+
+Modeled after [Sprockets](https://github.com/sstephenson/sprockets), GCP is run on every requested javascript file. It scans for comment lines beginning with `=` at the __top of the file__.
+
 Example in `client/sample.js`:
 ```js
 //= require lib/jquery
 //= require_tree ./ui
 //= requireTree ./models
 
+/* Multi-line comment
+ *= require file1 file2 file3
+ */
+
 $(function(){ document.write("Hello World") });
 ```
-This would output to `javascripts/sample.js`, and will include the required files/directories in the order they are listed. It can be linked to in views as:
+This would output to `javascripts/sample.js`, and will include the required files/directories in the order they are listed. Code at the bottom of the file will be at the end of the combined version.
+
+It can be linked to in views as:
 ```html
 <script type="text/javascript" src="javascripts/sample.js"></script>
 ```

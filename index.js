@@ -29,7 +29,8 @@ module.exports = function(options) {
         timeLaunched = new Date(),
         minify = options.minify,
         src = options.source,
-        dest = options.dest;
+        dest = options.dest,
+        fileList = [];
 
     if (!src) throw new Error('GCP requires "source" directory');
     if (!dest) throw new Error('GCP requires "dest" directory');
@@ -61,7 +62,7 @@ module.exports = function(options) {
         }, function(err, str) {
             if (err) return error(err);
             var group = this.group();
-            javascripts = getRequires(str);
+            javascripts = routeDirectives(str);
             // Gets all files in trees
             javascripts.forEach(function(r,i) {
                 // If it's an array, it's a folder
@@ -177,24 +178,47 @@ module.exports = function(options) {
         return code;
     }
 
+    var HEADER = /(?:(\/\/.*\n*)|(\/\*([\S\s]*?)\*\/))+/;
+    var DIRECTIVE = /^[\W]*=\s*(\w+.*?)(\*\\\/)?$/gm;
+
     // Gets required files from source
-    function getRequires(code) {
-        var files = [],
-            matches = code.match(/\/\/=.?require.+/g);
-        matches.forEach(function(m, i) {
-            var r;
-            if (m.match(/require_tree|requireTree/g)) {
-                r = m.replace(/\/\/=.?|require_tree|requireTree|\s/g, "");
-                files.push([join(src, r)]);
-            } else {
-                r = m.replace(/\/\/=.?require\s|\.js$|\.ejs$|\.hbs$|\s/g, "");
-                var end;
-                if (fs.existsSync(join(src, r + '.js'))) end = ".js";
-                else if (fs.existsSync(join(src, r + '.ejs'))) end = ".ejs";
-                else if (fs.existsSync(join(src, r + '.hbs'))) end = ".hbs";
-                else error(r + "' not found!");
-                files.push(join(src, r + end));
-            }
+    function parseDirectives(code) {
+        var match, header, words, command,
+            directives = [];
+
+        code = code.replace(/[\r\t ]+$/gm, '\n');
+        match = HEADER.exec(code);
+        header = match[0];
+
+        if (!match) return [];
+
+        while (match = DIRECTIVE.exec(header)) directives.push(match[1]);
+        return directives;
+    }
+
+    function routeDirectives(code) {
+        var files = [], end;
+        parseDirectives(code).forEach(function(d, i) {
+            var words = d.replace(/['"]/g, '').split(/\s+/),
+                cmd = words[0],
+                paths = words.length >= 2 ? [].slice.call(words, 1) : [];
+
+            paths.forEach(function(p) {
+                switch (cmd) {
+                case 'require':
+                case 'include':
+                    p = p.replace(/\.js$|\.ejs$|\.hbs$|\s/g, '');
+                    if (fs.existsSync(join(src, p + '.js'))) end = ".js";
+                    else if (fs.existsSync(join(src, p + '.ejs'))) end = ".ejs";
+                    else if (fs.existsSync(join(src, p + '.hbs'))) end = ".hbs";
+                    else error(p + "' not found!");
+                    files.push(join(src, p + end));
+                    break;
+                case 'require_tree':
+                case 'requireTree':
+                    files.push([join(src, p)]);
+                }
+            });
         });
         return files;
     }
