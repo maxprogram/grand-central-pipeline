@@ -33,7 +33,7 @@ module.exports = function(options) {
         minify = options.minify,
         src = options.source,
         dest = options.dest,
-        pathList = [], file;
+        pathList, file, lines, names;
 
     if (!src) throw new Error('GCP requires "source" directory');
     if (!dest) throw new Error('GCP requires "dest" directory');
@@ -57,7 +57,7 @@ module.exports = function(options) {
     };
 
     function prepare(destPath, reqPath, next) {
-        pathList = [];
+        pathList = lines = names = [];
         file = new File('require', reqPath);
         if (force) compile(destPath, next);
         else {
@@ -108,53 +108,6 @@ module.exports = function(options) {
             compress: compress
         });
         fs.writeFile(path, result.code, 'utf8', callback);
-    }
-
-    // Concatenates requires for dev environment
-    function concatenate_old(javascripts, path, cb) {
-        var linesArr = [],
-            nameArr = [],
-            code = "";
-
-        javascripts.forEach(function(file){
-            var text = getCode(file);
-
-            var lines = text.split(/\r\n|\r|\n/).length;
-            linesArr.push(lines);
-            nameArr.push(relative(src, file).replace(/\\/g,'/'));
-
-            code +=
-            "//=============================================\n" +
-            "//" + file + "\n" +
-            "//=============================================\n\n" +
-            text + "\n\n";
-        });
-
-        // Add files & line numbers for debugging
-        code += "// Line numbers for debugging\n" +
-            "var gcp = gcp || {};\n" +
-            "gcp.files = gcp.files || {};\n" +
-            "gcp.files['/" +
-            relative(join(dest,'..'), path).replace(/\\/g, '/') +
-            "'] = [" +
-            JSON.stringify(nameArr) + ", " +
-            JSON.stringify(linesArr) + "];";
-
-        fs.writeFile(path, code, 'utf8', cb);
-    }
-
-    // Minifies & writes to destination
-    function minifyJS_old(javascripts, path, cb) {
-        var code = "";
-        javascripts.forEach(function(file){
-            code += getCode(file) + '\n';
-        });
-        var result = uglify.minify(code, {
-            fromString: true,
-            mangle: mangle,
-            compress: compress
-        });
-        fs.writeFile(path, result.code, 'utf8', cb);
     }
 
 ////////////////////////////////
@@ -297,7 +250,7 @@ module.exports = function(options) {
     };
 
     File.prototype.toString = function() {
-        var concat = '',
+        var concat = '', end = '',
             code = this.getCode();
 
         var header = "" +
@@ -309,8 +262,22 @@ module.exports = function(options) {
             concat += f.toString();
         });
 
+        /* For future client-side debugger
+        if (!minify && code) {
+            lines.push(code.split(/\r\n|\r|\n/).length);
+            names.push(relative(this.dir, this.path).replace(/\\/g,'/'));
+            end += "// Line numbers for debugging\n" +
+                "var _gcp = _gcp || {};\n" +
+                "_gcp['/" +
+                relative(join(dest,'..'), this.path).replace(/\\/g, '/') +
+                "'] = [" +
+                JSON.stringify(names) + ", " +
+                JSON.stringify(lines) + "];";
+        }
+        */
+
         if (!code) return '';
-        else return concat + header + code + "\n\n";
+        else return concat + header + code + end + "\n\n";
     };
 
     function fileMatch(path) {
@@ -338,7 +305,7 @@ module.exports = function(options) {
 
     // Ignore ENOENT to fall through as 404
     function error(err) {
-        console.error("JS Compiler error: '" + err);
+        console.error("JavaScript Compiler error: '" + err);
         // next(ENOENT === err.code ? null : err);
     }
 

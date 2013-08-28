@@ -5,10 +5,8 @@ A javascript asset pipeline for Node and Express. Uses Rails-like syntax for req
 TODO:
 
 * Client-side debugging
-* More intelligent in-file requiring
-    * https://github.com/TrevorBurnham/snockets
+* Update docs (include, recursive directives)
     * https://github.com/sstephenson/sprockets
-* Recursive requires (required files also checked)
 * Examples folder with simple Express app
 
 ## Documentation
