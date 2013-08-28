@@ -52,8 +52,6 @@ app.configure(function(){
 
 All client-side javascript goes in the __source__ directory (`/client` in this case). When a file is requested, it is compiled into a single JS file in the public __dest__ directory (`/public/javascripts` in this case).
 
-Other javascipt files can be required using `//= require` or `//= require_tree`, which will be compiled into the requested file.
-
 In the __development__ environment, required JS files are concatenated and labeled as is. In __production__, they are minified using UglifyJS.
 
 ## Directive Processor
@@ -95,7 +93,7 @@ The Directive Processor is __recursive__, meaning all bundled files are also che
 
 #### `require_directory` or `requireDirectory`
 
-`require_directory` *path* requires all source files of the same format in the directory specified by *path*. Files are required in alphabetical order.
+`require_directory` *path* requires all source files in the directory specified by *path*. Files are required in alphabetical order.
 
 #### `require_tree` or `requireTree`
 
