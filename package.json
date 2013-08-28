@@ -1,8 +1,8 @@
 {
     "name": "grand-central-pipeline",
     "description": "A javascript asset pipeline for Node",
-    "version": "0.0.5",
-    "keywords": ["grand central", "pipeline", "rails", "grand central pipeline", "minify", "uglify", "requireJS"],
+    "version": "0.0.6",
+    "keywords": ["grand central", "pipeline", "sprockets", "rails", "grand central pipeline", "minify", "uglify", "requireJS"],
     "author": {
         "name": "Max Olson",
         "url": "http://www.github.com/maxprogram/grand-central-pipeline"

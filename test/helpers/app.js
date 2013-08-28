@@ -1,5 +1,5 @@
 //= require include
 //= require tmp
-//= require_tree ./folder
+//= include ./directory/beta
 
 console.log("Hello World");

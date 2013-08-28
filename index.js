@@ -173,6 +173,10 @@ module.exports = function(options) {
                     path = _this.getPath(p);
                     if (path) files.push({ include: path });
                     break;
+                case 'require_directory':
+                case 'requireDirectory':
+                    files.push({ directory: join(_this.dir, p) });
+                    break;
                 case 'require_tree':
                 case 'requireTree':
                     files.push({ tree: join(_this.dir, p) });
@@ -207,6 +211,8 @@ module.exports = function(options) {
             var file;
             if (path.hasOwnProperty('tree')) {
                 _this.requireTree(path.tree, callback);
+            } else if (path.hasOwnProperty('directory')) {
+                _this.requireDirectory(path.directory, callback);
             } else if (path.hasOwnProperty('include')) {
                 file = new File('include', path.include);
                 file.init(callback);
@@ -224,9 +230,27 @@ module.exports = function(options) {
         });
     };
 
+    File.prototype.requireDirectory = function(path, callback) {
+        var _this = this;
+        if (!fs.existsSync(path)) callback(error(path + "' not found!"));
+        else fs.readdir(path, function(err, files) {
+            if (err) callback(err);
+            files = files.filter(function(f) {
+                return fileMatch(f);
+            }).map(function(f) {
+                return new File('require', join(path, f));
+            });
+
+            async.map(files, function(file, cb) {
+                file.init(cb);
+            }, callback);
+        });
+    };
+
     File.prototype.requireTree = function(path, callback) {
         var _this = this;
-        glob('**/*', {cwd: path}, function(err, files) {
+        if (!fs.existsSync(path)) callback(error(path + "' not found!"));
+        else glob('**/*', {cwd: path}, function(err, files) {
             if (err) callback(err);
             files = files.filter(function(f) {
                 return fileMatch(f);
@@ -305,8 +329,9 @@ module.exports = function(options) {
 
     // Ignore ENOENT to fall through as 404
     function error(err) {
-        console.error("JavaScript Compiler error: '" + err);
-        // next(ENOENT === err.code ? null : err);
+        err = "JavaScript Compiler error: '" + err;
+        console.error(err);
+        return err;
     }
 
     return middleware;

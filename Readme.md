@@ -1,17 +1,17 @@
 # Grand Central Pipeline
 
-A javascript asset pipeline for Node and Express. Uses Rails-like syntax for requiring and concatenating javascript files. Minifies using UglifyJS in production environments.
+A javascript asset pipeline for Node and Express. Based on the Sprockets/Rails methods for giving directives and concatenating javascript files. Minifies using UglifyJS in production environments.
 
 TODO:
 
 * Client-side debugging
-* Update docs (include, recursive directives)
-    * https://github.com/sstephenson/sprockets
 * Examples folder with simple Express app
 
-## Documentation
+# Documentation
 
-### gcp(options)
+## Setup with Express
+
+Grand Central Pipeline can be used as middleware to serve javascript assets from any Express application.
 
 __Options that can be specified:__
 
@@ -28,7 +28,8 @@ require('grand-central-pipeline')({
     dest: '',     // required
     force: false,
     minify: false,
-    templateName: 'jst'
+    templateName: 'jst',
+    templateDir: ''
 });
 ```
 
@@ -55,15 +56,15 @@ Other javascipt files can be required using `//= require` or `//= require_tree`,
 
 In the __development__ environment, required JS files are concatenated and labeled as is. In __production__, they are minified using UglifyJS.
 
-### Directives
+## Directive Processor
 
 Modeled after [Sprockets](https://github.com/sstephenson/sprockets), GCP is run on every requested javascript file. It scans for comment lines beginning with `=` at the __top of the file__.
 
-Example in `client/sample.js`:
+### Example in `client/sample.js`:
+
 ```js
 //= require lib/jquery
 //= require_tree ./ui
-//= requireTree ./models
 
 /* Multi-line comment
  *= require file1 file2 file3
@@ -71,20 +72,40 @@ Example in `client/sample.js`:
 
 $(function(){ document.write("Hello World") });
 ```
-This would output to `javascripts/sample.js`, and will include the required files/directories in the order they are listed. Code at the bottom of the file will be at the end of the combined version.
+This would output to, and be requested from `/javascripts/sample.js`, and will include the required files and directories in the order they are listed. Code at the bottom of the file will be at the end of the combined version.
 
 It can be linked to in views as:
 ```html
-<script type="text/javascript" src="javascripts/sample.js"></script>
+<script type="text/javascript" src="/javascripts/sample.js"></script>
 ```
 
 If `javascripts/folder/sample.js` is requested by the client, the corresponding source file should be in `client/folder/sample.js`.
 
-### Templating
+The Directive Processor is __recursive__, meaning all bundled files are also checked. So if 'models.js' is required, that file will also be checked for any directives and those files will also be bundled.
 
-Javascript templating is also supported. GCP supports __Underscore (.ejs)__ and __Handlebars (.hbs)__ templates. Any files *required* by the requested JS (as in using `//= require sample.hbs`, not requesting the actual template) with those extensions will be compiled.
+### GCP Directives
 
-The templates can be accessed through `jst['path/file']` or whatever template name you provide in the options.
+#### `require`
+
+`require` *path* inserts the contents of the asset source file specified by *path*. If the file is required multiple times, it will appear in the bundle only once.
+
+#### `include`
+
+`include` *path* works like `require`, but inserts the contents of the specified source file even if it has already been included or required.
+
+#### `require_directory` or `requireDirectory`
+
+`require_directory` *path* requires all source files of the same format in the directory specified by *path*. Files are required in alphabetical order.
+
+#### `require_tree` or `requireTree`
+
+`require_tree` *path* works like `require_directory`, but operates recursively to require all files in all subdirectories of the directory specified by *path*.
+
+## Templating
+
+Javascript templating is also supported. GCP supports __Embedded Javascript/Underscore (.ejs)__ and __Handlebars (.hbs)__ templates. Any files *required* by the requested JS (as in using `//= require sample.hbs`) with those extensions will be compiled.
+
+The templates can be accessed through the namespace `jst['path/file']` or whatever template name you provide in the options.
 
 So if your template's actual path was *client/templates/home/index.ejs* the corresponding client-side javascript would be:
 ```js
@@ -107,12 +128,12 @@ Template in *client/templates/list.hbs*, assuming the template (or folder) is re
 </script>
 ```
 
+Use the option `templateDir` if you have a single folder with templates in your __source__ directory. So with the option `templateDir: 'templates'`, the file `project.hbs` within `source/templates` will be called on the client-side with `jst['project']`. You still need to `//= require_tree ./templates` for this to work.
+
 ### Client-side Debugging
 
 [WORK IN PROGRESS] The GCP client-side library handles errors to return the correct file names and line numbers for debugging.
 
-### Miscellaneous
+### Skipping files
 
 If you don't want a `.js` file to be compiled, add __"_skip"__ to the filename. So `file_skip.js` will be passed over. This also works for folders, so `/files_skip/app.js` and anything in that folder will be skipped.
-
-Use the option `templateDir` if you have a single folder with templates in your __source__ directory. So with the option `templateDir: 'templates'`, the file `project.hbs` within `source/templates` will be called on the client-side with `jst['project']`. You still need to `//= require_tree ./templates` for this to work.

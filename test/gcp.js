@@ -66,12 +66,32 @@ it('should compile javascript template', function(done) {
         .end(done);
 });
 
-it('should compile javascript template', function(done) {
+it('should compile included file', function(done) {
     request.get('/app.js')
         .set('Accept', 'application/javascript')
         .expect(200)
         .expect("content-type", /application\/javascript/)
-        .expect(/Batman/)
+        .expect(/b.=.2/)
+        .end(done);
+});
+
+it('should compile required directory', function(done) {
+    request.get('/folders.js')
+        .set('Accept', 'application/javascript')
+        .expect(200)
+        .expect("content-type", /application\/javascript/)
+        .expect(/a.=.1/)
+        .expect(/b.=.2/)
+        .end(done);
+});
+
+it('should compile required tree', function(done) {
+    request.get('/folders.js')
+        .set('Accept', 'application/javascript')
+        .expect(200)
+        .expect("content-type", /application\/javascript/)
+        .expect(/g.=.3/)
+        .expect(/d.=.4/)
         .end(done);
 });
 
@@ -92,7 +112,6 @@ it('should minify javascript', function(done) {
         .set('Accept', 'application/javascript')
         .expect(200)
         .expect("content-type", /application\/javascript/)
-        .expect(/b=2\,a=1/)
         .expect(/b=2;console/)
         .end(done);
 });
