@@ -1,5 +1,8 @@
 /**
- * Adapted from Jake Wharton's uglify-js-middleware
+ * Inspiration from:
+ * uglify-js-middleware (https://github.com/JakeWharton/uglify-js-middleware)
+ * snockets (https://github.com/pthrasher/snockets)
+ *
  */
 
 var _        = require('underscore'),
@@ -12,7 +15,7 @@ var _        = require('underscore'),
     join     = npath.join,
     relative = npath.relative,
     glob     = require('glob'),
-    Step     = require('step'),
+    async    = require('async'),
     jst      = require('./jst'),
     ENOENT   = 'ENOENT';
 
@@ -30,7 +33,7 @@ module.exports = function(options) {
         minify = options.minify,
         src = options.source,
         dest = options.dest,
-        fileList = [];
+        pathList = [], file;
 
     if (!src) throw new Error('GCP requires "source" directory');
     if (!dest) throw new Error('GCP requires "dest" directory');
@@ -53,78 +56,62 @@ module.exports = function(options) {
 
     };
 
-    // Gets list of all required javascripts,
-    // then compiles if necessary.
     function prepare(destPath, reqPath, next) {
-        var javascripts = [], trees = [];
-        Step(function(){
-            fs.readFile(reqPath, 'utf8', this);
-        }, function(err, str) {
-            if (err) return error(err);
-            var group = this.group();
-            javascripts = routeDirectives(str);
-            // Gets all files in trees
-            javascripts.forEach(function(r,i) {
-                // If it's an array, it's a folder
-                if (Array.isArray(r)) {
-                    trees.push(i);
-                    glob('**/*', {cwd: r[0]}, group());
-                }
-            });
-
-        }, function(err, globs) {
-            // Removes any other files
-            globs = (globs) ? globs.map(function(files) {
-                return files.filter(function(f) {
-                    return (/\.js$|\.ejs$|\.hbs$/.test(f));
+        pathList = [];
+        file = new File('require', reqPath);
+        if (force) compile(destPath, next);
+        else {
+            var compiled = fs.existsSync(destPath);
+            if (!compiled || compiled.code === ENOENT || compiled === {}) {
+            // JS has not been compiled, compile it!
+                compile(destPath, next);
+            } else {
+            // Compare modified times to last compile time
+                var compiledTime = fs.statSync(destPath).mtime,
+                    shouldCompile = false;
+                if (minify && compiledTime < timeLaunched) shouldCompile = true;
+                else pathList.forEach(function(js) {
+                    var mtime = fs.statSync(js).mtime;
+                    if (mtime > compiledTime) shouldCompile = true;
                 });
-            }) : null;
-
-            // Matches files back to their folders
-            trees.forEach(function(t,i) {
-                var files = globs[i].map(function(f) {
-                    return join(javascripts[t][0], f);
-                });
-                javascripts[t] = files;
-            });
-
-            javascripts = _.flatten(javascripts);
-            javascripts.push(reqPath);
-
-            if (force) compile(javascripts, destPath, next);
-            else {
-                var compiled = fs.existsSync(destPath);
-                if (!compiled || compiled.code === ENOENT || compiled === {}) {
-                // JS has not been compiled, compile it!
-                    compile(javascripts, destPath, next);
-                } else {
-                // Compare modified times to last compile time
-                    var compiledTime = fs.statSync(destPath).mtime,
-                        shouldCompile = false;
-                    if (minify && compiledTime < timeLaunched) shouldCompile = true;
-                    else javascripts.forEach(function(js) {
-                        var mtime = fs.statSync(js).mtime;
-                        if (mtime > compiledTime) shouldCompile = true;
-                    });
-                    if (shouldCompile) compile(javascripts, destPath, next);
-                    else next();
-                }
+                if (shouldCompile) compile(destPath, next);
+                else next();
             }
-        });
+        }
     }
 
     // Compile to destination path
-    function compile(javascripts, path, next) {
+    function compile(path, next) {
         try {
-            if (minify) minifyJS(javascripts, path, next);
-            else concatenate(javascripts, path, next);
+            file.init(function(err) {
+                if (err) next(err);
+                if (minify) minifyJS(path, next);
+                else concatenate(path, next);
+            });
         } catch(ex) {
             return next(ex);
         }
     }
 
     // Concatenates requires for dev environment
-    function concatenate(javascripts, path, cb) {
+    function concatenate(path, callback) {
+        var code = file.toString();
+        fs.writeFile(path, code, 'utf8', callback);
+    }
+
+    // Minifies & writes to destination
+    function minifyJS(path, callback) {
+        var code = file.toString();
+        var result = uglify.minify(code, {
+            fromString: true,
+            mangle: mangle,
+            compress: compress
+        });
+        fs.writeFile(path, result.code, 'utf8', callback);
+    }
+
+    // Concatenates requires for dev environment
+    function concatenate_old(javascripts, path, cb) {
         var linesArr = [],
             nameArr = [],
             code = "";
@@ -157,7 +144,7 @@ module.exports = function(options) {
     }
 
     // Minifies & writes to destination
-    function minifyJS(javascripts, path, cb) {
+    function minifyJS_old(javascripts, path, cb) {
         var code = "";
         javascripts.forEach(function(file){
             code += getCode(file) + '\n';
@@ -170,63 +157,189 @@ module.exports = function(options) {
         fs.writeFile(path, result.code, 'utf8', cb);
     }
 
-    // Gets file code, renders if file is a JST
-    function getCode(file) {
-        var code = '' + fs.readFileSync(file);
-        if (/\.ejs$/.test(file)) code = jst.underscore(code, src, file);
-        else if (/\.hbs$/.test(file)) code = jst.hbs(code, src, file);
-        return code;
-    }
+////////////////////////////////
 
     var HEADER = /(?:(\/\/.*\n*)|(\/\*([\S\s]*?)\*\/))+/;
     var DIRECTIVE = /^[\W]*=\s*(\w+.*?)(\*\\\/)?$/gm;
+    var extensions = ['.js', '.ejs', '.hbs'];
 
-    // Gets required files from source
-    function parseDirectives(code) {
-        var match, header, words, command,
-            directives = [];
+    function File(type, path) {
+        var file = this;
+        this.type = type;
+        this.path = npath.resolve(path);
+        this.dir = dirname(path);
+        this.duplicate = false;
 
-        code = code.replace(/[\r\t ]+$/gm, '\n');
-        match = HEADER.exec(code);
-        header = match[0];
+        this.files = [];
+        this.requires = [];
 
-        if (!match) return [];
-
-        while (match = DIRECTIVE.exec(header)) directives.push(match[1]);
-        return directives;
+        pathList.forEach(function(path) {
+            if (file.path == path) file.duplicate = true;
+        });
+        pathList.push(this.path);
     }
 
-    function routeDirectives(code) {
-        var files = [], end;
-        parseDirectives(code).forEach(function(d, i) {
+    File.prototype.init = function(callback) {
+        var file = this;
+        async.series([
+            _.bind(this.readFile, this),
+            _.bind(this.getDirectives, this),
+            _.bind(this.resolvePaths, this)
+        ], function(err, res) {
+            callback(err, file);
+        });
+    };
+
+    File.prototype.readFile = function(callback) {
+        var path = this.path, _this = this;
+        fs.readFile(path, function(err, code) {
+            if (err) callback(err);
+            code = '' + code;
+            if (/\.ejs$/.test(path)) code = jst.underscore(code, _this.dir, path);
+            else if (/\.hbs$/.test(path)) code = jst.hbs(code, _this.dir, path);
+            _this.code = code;
+            callback(null, code);
+        });
+    };
+
+    File.prototype.getDirectives = function(callback) {
+        var files = [], _this = this;
+
+        parseDirectives(this.code).forEach(function(d, i) {
             var words = d.replace(/['"]/g, '').split(/\s+/),
-                cmd = words[0],
+                cmd = words[0], path,
                 paths = words.length >= 2 ? [].slice.call(words, 1) : [];
 
             paths.forEach(function(p) {
                 switch (cmd) {
                 case 'require':
+                    path = _this.getPath(p);
+                    if (path) files.push(path);
+                    break;
                 case 'include':
-                    p = p.replace(/\.js$|\.ejs$|\.hbs$|\s/g, '');
-                    if (fs.existsSync(join(src, p + '.js'))) end = ".js";
-                    else if (fs.existsSync(join(src, p + '.ejs'))) end = ".ejs";
-                    else if (fs.existsSync(join(src, p + '.hbs'))) end = ".hbs";
-                    else error(p + "' not found!");
-                    files.push(join(src, p + end));
+                    path = _this.getPath(p);
+                    if (path) files.push({ include: path });
                     break;
                 case 'require_tree':
                 case 'requireTree':
-                    files.push([join(src, p)]);
+                    files.push({ tree: join(_this.dir, p) });
                 }
             });
         });
-        return files;
+
+        this.requires = this.requires.concat(files);
+        callback(null, this.requires);
+    };
+
+    File.prototype.getPath = function(path) {
+        extensions.forEach(function(ext) {
+            path = path.replace(new RegExp('\\'+ext+'$'), '');
+        });
+        path = join(this.dir, path);
+
+        var fullPath;
+        for (var i in extensions) {
+            var ext = extensions[i];
+            if (fs.existsSync(path + ext)) fullPath = path + ext;
+        }
+
+        if (fullPath) return fullPath;
+        else { error(path + "' not found!"); return null; }
+    };
+
+    File.prototype.resolvePaths = function(callback) {
+        var done = true, _this = this;
+
+        function resolvePath(path, callback) {
+            var file;
+            if (path.hasOwnProperty('tree')) {
+                _this.requireTree(path.tree, callback);
+            } else if (path.hasOwnProperty('include')) {
+                file = new File('include', path.include);
+                file.init(callback);
+            } else if (typeof path === 'string') {
+                file = new File('require', path);
+                file.init(callback);
+            } else callback("Not recognized");
+        }
+
+        async.map(this.requires, resolvePath, function(err, files) {
+            if (err) throw err;
+            files = _.flatten(files);
+            _this.files = _this.files.concat(files);
+            callback(null, files);
+        });
+    };
+
+    File.prototype.requireTree = function(path, callback) {
+        var _this = this;
+        glob('**/*', {cwd: path}, function(err, files) {
+            if (err) callback(err);
+            files = files.filter(function(f) {
+                return fileMatch(f);
+            }).map(function(f) {
+                return new File('require', join(path, f));
+            });
+
+            async.map(files, function(file, cb) {
+                file.init(cb);
+            }, callback);
+        });
+    };
+
+    File.prototype.getCode = function() {
+        if (this.type == 'include') {
+            return this.code;
+        } else {
+            if (this.duplicate) return null;
+            else return this.code;
+        }
+    };
+
+    File.prototype.toString = function() {
+        var concat = '',
+            code = this.getCode();
+
+        var header = "" +
+            "//=============================================\n" +
+            "//" + this.path + "\n" +
+            "//=============================================\n\n";
+
+        this.files.forEach(function(f) {
+            concat += f.toString();
+        });
+
+        if (!code) return '';
+        else return concat + header + code + "\n\n";
+    };
+
+    function fileMatch(path) {
+        var match = false;
+        extensions.forEach(function(ext) {
+            if (new RegExp('\\'+ext+'$').test(path)) match = true;
+        });
+        return match;
     }
+
+    function parseDirectives(code) {
+        var match, header,
+            directives = [];
+
+        code = code.replace(/[\r\t ]+$/gm, '\n');
+        match = HEADER.exec(code);
+
+        if (!match) return [];
+        header = match[0];
+
+        while (match = DIRECTIVE.exec(header)) directives.push(match[1]);
+        return directives;
+    }
+
 
     // Ignore ENOENT to fall through as 404
     function error(err) {
-        console.log("JS Compiler error: '" + err);
-        next(ENOENT === err.code ? null : err);
+        console.error("JS Compiler error: '" + err);
+        // next(ENOENT === err.code ? null : err);
     }
 
     return middleware;

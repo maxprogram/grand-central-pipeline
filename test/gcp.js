@@ -92,7 +92,8 @@ it('should minify javascript', function(done) {
         .set('Accept', 'application/javascript')
         .expect(200)
         .expect("content-type", /application\/javascript/)
-        .expect(/a=88;console/)
+        .expect(/b=2\,a=1/)
+        .expect(/b=2;console/)
         .end(done);
 });
 
