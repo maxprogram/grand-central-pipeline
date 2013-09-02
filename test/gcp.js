@@ -10,8 +10,6 @@ var source = path.join(__dirname, 'helpers'),
     app, request, config;
 
 before(function(done) {
-    fs.mkdirSync(dest);
-
     app = express();
     config = function(){
         app.use(express.static(dest));
@@ -45,6 +43,15 @@ it('should compile requested file', function(done) {
         .expect(200)
         .expect("content-type", /application\/javascript/)
         .expect(/Hello.World/)
+        .end(done);
+});
+
+it('should compile nested file', function(done) {
+    request.get('/tree/gamma.js')
+        .set('Accept', 'application/javascript')
+        .expect(200)
+        .expect("content-type", /application\/javascript/)
+        .expect(/g.=.3/)
         .end(done);
 });
 

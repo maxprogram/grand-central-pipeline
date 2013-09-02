@@ -1,7 +1,7 @@
 {
     "name": "grand-central-pipeline",
     "description": "A javascript asset pipeline for Node",
-    "version": "0.0.6",
+    "version": "0.0.7",
     "keywords": ["grand central", "pipeline", "sprockets", "rails", "grand central pipeline", "minify", "uglify", "requireJS"],
     "author": {
         "name": "Max Olson",
@@ -26,6 +26,7 @@
 
     "dependencies": {
         "underscore": "*",
+        "mkdirp": "*",
         "glob": "3.1.21",
         "uglify-js": "2.2.5",
         "ejs": "~0.8.3",

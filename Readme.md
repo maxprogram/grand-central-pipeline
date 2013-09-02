@@ -4,10 +4,16 @@ A javascript asset pipeline for Node and Express. Based on the Sprockets/Rails m
 
 TODO:
 
+* Command-line utility
+    * `gcp ./src/app.js app.js --min`
 * Client-side debugging
 * Examples folder with simple Express app
 
 # Documentation
+
+### Breaking Changes in 0.0.8
+
+* The `dest` directory is now your main public/assets directory. No need to specify a `javascripts` folder; any requested files will have `dest` as a base. So requesting `/javascripts/app.js` will compile the file in `[dest]/javascripts`.
 
 ## Setup with Express
 
@@ -16,7 +22,7 @@ Grand Central Pipeline can be used as middleware to serve javascript assets from
 __Options that can be specified:__
 
 * `source` ( *required* ) : the directory of the actual javascript files to be compiled.
-* `dest` ( *required* ) : the directory you want the compiled javascript to be stored & requested from.
+* `dest` ( *required* ) : the asset directory you want any compiled files to be requested from.
 * `force` (default `false`) : set to true to force compilation whenever javascript is reloaded. Normally it only compiles when a file has changed.
 * `minify` (default `false`) : set to true to minify all javascript. If not present, GCP minifies in __production__ and concatenates in __development__.
 * `templateName` (default `jst`) : the name of the global client-side object that stores all javascript templates.
@@ -43,14 +49,14 @@ var express = require('express'),
 app.configure(function(){
     app.use(gcp({
         source: path.join(__dirname, 'client'),
-        dest: path.join(__dirname, 'public/javascripts')
+        dest: path.join(__dirname, 'public')
     }));
     // It's best to put the GCP middleware above Express's static asset pipline:
     app.use(express.static(path.join(__dirname, 'public')));
 });
 ```
 
-All client-side javascript goes in the __source__ directory (`/client` in this case). When a file is requested, it is compiled into a single JS file in the public __dest__ directory (`/public/javascripts` in this case).
+All client-side javascript goes in the __source__ directory (`/client` in this case). When a file is requested, it is compiled into a single JS file in the public __dest__ directory (`/public` in this case). So a request for `/javascripts/app.js` will be compiled into the `public/javascripts` directory.
 
 In the __development__ environment, required JS files are concatenated and labeled as is. In __production__, they are minified using UglifyJS.
 

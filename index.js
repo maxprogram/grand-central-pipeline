@@ -6,6 +6,7 @@
  */
 
 var _        = require('underscore'),
+    mkdirp   = require('mkdirp'),
     uglify   = require('uglify-js'),
     fs       = require('fs'),
     url      = require('url'),
@@ -48,9 +49,8 @@ module.exports = function(options) {
         var path = url.parse(req.url).pathname;
 
         if (/\.js$/.test(path) && !/_skip/.test(path)) {
-            var newPath = basename(path),
-                destPath = join(dest, newPath),
-                reqPath = join(src, newPath);
+            var destPath = join(dest, path),
+                reqPath = join(src, path);
             prepare(destPath, reqPath, next);
         } else next();
 
@@ -83,10 +83,13 @@ module.exports = function(options) {
     // Compile to destination path
     function compile(path, next) {
         try {
-            file.init(function(err) {
+            mkdirp(dirname(path), function(err) {
                 if (err) next(err);
-                if (minify) minifyJS(path, next);
-                else concatenate(path, next);
+                else file.init(function(err) {
+                    if (err) next(err);
+                    if (minify) minifyJS(path, next);
+                    else concatenate(path, next);
+                });
             });
         } catch(ex) {
             return next(ex);
