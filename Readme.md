@@ -4,8 +4,6 @@ A javascript asset pipeline for Node and Express. Based on the Sprockets/Rails m
 
 TODO:
 
-* Command-line utility
-    * `gcp ./src/app.js app.js --min`
 * Client-side debugging
 * Examples folder with simple Express app
 
@@ -137,6 +135,15 @@ Template in *client/templates/list.hbs*, assuming the template (or folder) is re
 ```
 
 Use the option `templateDir` if you have a single folder with templates in your __source__ directory. So with the option `templateDir: 'templates'`, the file `project.hbs` within `source/templates` will be called on the client-side with `jst['project']`. You still need to `//= require_tree ./templates` for this to work.
+
+### Command Line Tool
+
+    $ gcp [source] [destination] --min --all
+
+* `source` is the only required argument. The source javascript file will be processed and concatenated into the same directory as `filename.dist.js'.
+* `destination` is the destination of the processed file.
+* `--min` minifies the javascript.
+* `--all` both concatenates and minifies.
 
 ### Client-side Debugging
 

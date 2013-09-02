@@ -1,7 +1,8 @@
 {
     "name": "grand-central-pipeline",
     "description": "A javascript asset pipeline for Node",
-    "version": "0.0.8",
+    "version": "0.0.9",
+    "preferGlobal": true,
     "keywords": ["grand central", "pipeline", "sprockets", "rails", "grand central pipeline", "minify", "uglify", "requireJS"],
     "author": {
         "name": "Max Olson",
@@ -13,6 +14,10 @@
     },
 
     "main": "./lib/index",
+
+    "bin": {
+        "gcp": "./bin/gcp.js"
+    },
 
     "scripts": {
         "test": "mocha -R spec"
