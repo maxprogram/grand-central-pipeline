@@ -2,11 +2,11 @@ var assert = require('assert'),
     path = require('path'),
     fs = require('fs'),
     express = require('express'),
-    gcp = require('..'),
+    gcp = require('../lib/index'),
     supertest = require('supertest');
 
 var source = path.join(__dirname, 'helpers'),
-    dest = path.join(__dirname, 'javascripts'),
+    dest = path.join(__dirname, 'assets'),
     app, request, config;
 
 before(function(done) {
@@ -24,11 +24,13 @@ before(function(done) {
         });
     };
 
+    var GCP = gcp({
+        source: path.join(__dirname, 'helpers'),
+        dest: dest
+    });
+
     app.configure(function() {
-        app.use(gcp({
-            source: path.join(__dirname, 'helpers'),
-            dest: dest
-        }));
+        app.use(GCP);
     });
     app.configure(config);
     request = supertest(app);
@@ -37,8 +39,17 @@ before(function(done) {
 
 describe('grand-central-pipeline', function() {
 
+it('should get other assets normally', function(done) {
+    request.get('/nocompile.js')
+        .set('Accept', 'application/javascript')
+        .expect(200)
+        .expect("content-type", /application\/javascript/)
+        .expect(/requested/)
+        .end(done);
+});
+
 it('should compile requested file', function(done) {
-    request.get('/app.js')
+    request.get('/javascripts/app.js')
         .set('Accept', 'application/javascript')
         .expect(200)
         .expect("content-type", /application\/javascript/)
@@ -47,7 +58,7 @@ it('should compile requested file', function(done) {
 });
 
 it('should compile nested file', function(done) {
-    request.get('/tree/gamma.js')
+    request.get('/javascripts/tree/gamma.js')
         .set('Accept', 'application/javascript')
         .expect(200)
         .expect("content-type", /application\/javascript/)
@@ -56,7 +67,7 @@ it('should compile nested file', function(done) {
 });
 
 it('should compile required file', function(done) {
-    request.get('/app.js')
+    request.get('/javascripts/app.js')
         .set('Accept', 'application/javascript')
         .expect(200)
         .expect("content-type", /application\/javascript/)
@@ -65,7 +76,7 @@ it('should compile required file', function(done) {
 });
 
 it('should compile javascript template', function(done) {
-    request.get('/app.js')
+    request.get('/javascripts/app.js')
         .set('Accept', 'application/javascript')
         .expect(200)
         .expect("content-type", /application\/javascript/)
@@ -74,7 +85,7 @@ it('should compile javascript template', function(done) {
 });
 
 it('should compile included file', function(done) {
-    request.get('/app.js')
+    request.get('/javascripts/app.js')
         .set('Accept', 'application/javascript')
         .expect(200)
         .expect("content-type", /application\/javascript/)
@@ -83,7 +94,7 @@ it('should compile included file', function(done) {
 });
 
 it('should compile required directory', function(done) {
-    request.get('/folders.js')
+    request.get('/javascripts/folders.js')
         .set('Accept', 'application/javascript')
         .expect(200)
         .expect("content-type", /application\/javascript/)
@@ -93,7 +104,7 @@ it('should compile required directory', function(done) {
 });
 
 it('should compile required tree', function(done) {
-    request.get('/folders.js')
+    request.get('/javascripts/folders.js')
         .set('Accept', 'application/javascript')
         .expect(200)
         .expect("content-type", /application\/javascript/)
@@ -115,7 +126,7 @@ it('should minify javascript', function(done) {
     });
     app.configure(config);
     request = supertest(app);
-    request.get('/app.js')
+    request.get('/javascripts/app.js')
         .set('Accept', 'application/javascript')
         .expect(200)
         .expect("content-type", /application\/javascript/)
@@ -124,7 +135,7 @@ it('should minify javascript', function(done) {
 });
 
 it('should allow change of template namespace', function(done) {
-    request.get('/app.js')
+    request.get('/javascripts/app.js')
         .set('Accept', 'application/javascript')
         .expect(200)
         .expect("content-type", /application\/javascript/)
@@ -133,7 +144,7 @@ it('should allow change of template namespace', function(done) {
 });
 
 it('should return nothing if require doesnt exist', function(done) {
-    request.get('/bizzaro.js')
+    request.get('/javascripts/bizzaro.js')
         .set('Accept', 'application/javascript')
         .expect(200)
         .expect("content-type", /application\/javascript/)
@@ -144,7 +155,7 @@ it('should return nothing if require doesnt exist', function(done) {
 });
 
 after(function(done) {
-    deleteFolderRecursive(dest, function(){
+    deleteFolderRecursive(path.join(dest, 'javascripts'), function(){
         done();
     });
 });

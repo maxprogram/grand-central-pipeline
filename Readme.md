@@ -13,7 +13,7 @@ TODO:
 
 ### Breaking Changes in 0.0.8
 
-* The `dest` directory is now your main public/assets directory. No need to specify a `javascripts` folder; any requested files will have `dest` as a base. So requesting `/javascripts/app.js` will compile the file in `[dest]/javascripts`.
+* The `dest` directory is now your main public/assets directory. No need to specify a `javascripts` folder; any requested JS files will have `dest` as a base. So requesting `/javascripts/app.js` will compile the file in `[dest]/javascripts/app.js` from the file `[src]/app.js`.
 
 ## Setup with Express
 
@@ -57,6 +57,10 @@ app.configure(function(){
 ```
 
 All client-side javascript goes in the __source__ directory (`/client` in this case). When a file is requested, it is compiled into a single JS file in the public __dest__ directory (`/public` in this case). So a request for `/javascripts/app.js` will be compiled into the `public/javascripts` directory.
+
+__Any requests made outside of `/javascripts` will not be run through the processor.__
+
+### Minification
 
 In the __development__ environment, required JS files are concatenated and labeled as is. In __production__, they are minified using UglifyJS.
 
