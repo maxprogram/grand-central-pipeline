@@ -1,7 +1,7 @@
 {
     "name": "grand-central-pipeline",
     "description": "A javascript asset pipeline for Node",
-    "version": "0.0.9",
+    "version": "0.1.0",
     "preferGlobal": true,
     "keywords": ["grand central", "pipeline", "sprockets", "rails", "grand central pipeline", "minify", "uglify", "requireJS"],
     "author": {
