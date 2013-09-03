@@ -7,7 +7,7 @@ var assert = require('assert'),
 
 var source = path.join(__dirname, 'helpers'),
     dest = path.join(__dirname, 'assets'),
-    app, request, config;
+    app, request, config, mtime;
 
 before(function(done) {
     app = express();
@@ -113,6 +113,18 @@ it('should compile required tree', function(done) {
         .end(done);
 });
 
+it("should recompile if changed", function(done) {
+    var file = path.join(source, 'app.js');
+    fs.appendFile(file, "var m=0", function(err) {
+        request.get('/javascripts/app.js')
+          .set('Accept', 'application/javascript')
+          .expect(200)
+          .expect("content-type", /application\/javascript/)
+          .expect(/var\sm=0/)
+          .end(done);
+    });
+});
+
 it('should minify javascript', function(done) {
     app = express();
     app.configure(function() {
@@ -155,8 +167,13 @@ it('should return nothing if require doesnt exist', function(done) {
 });
 
 after(function(done) {
-    deleteFolderRecursive(path.join(dest, 'javascripts'), function(){
-        done();
+    var file = path.join(source, 'app.js');
+    fs.readFile(file, function(err, str) {
+        str = str + '';
+        str = str.replace(/var\sm=0/, '');
+        fs.writeFile(file, str, function(err) {
+            deleteFolderRecursive(path.join(dest, 'javascripts'), done);
+        });
     });
 });
 

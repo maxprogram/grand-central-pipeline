@@ -21,7 +21,6 @@ __Options that can be specified:__
 
 * `source` ( *required* ) : the directory of the actual javascript files to be compiled.
 * `dest` ( *required* ) : the asset directory you want any compiled files to be requested from.
-* `force` (default `false`) : set to true to force compilation whenever javascript is reloaded. Normally it only compiles when a file has changed.
 * `minify` (default `false`) : set to true to minify all javascript. If not present, GCP minifies in __production__ and concatenates in __development__.
 * `templateName` (default `jst`) : the name of the global client-side object that stores all javascript templates.
 
@@ -30,10 +29,10 @@ All options and defaults:
 require('grand-central-pipeline')({
     source: '',   // required
     dest: '',     // required
-    force: false,
     minify: false,
     templateName: 'jst',
-    templateDir: ''
+    templateDir: '',
+    env: (current Node Environment || 'development')
 });
 ```
 
