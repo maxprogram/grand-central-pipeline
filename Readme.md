@@ -1,3 +1,6 @@
+# *DEPRECIATED*
+## Not being updated, for historic preservation only
+
 # Grand Central Pipeline
 
 A javascript asset pipeline for Node and Express. Based on the Sprockets/Rails methods for giving directives and concatenating javascript files. Minifies using UglifyJS in production environments.
